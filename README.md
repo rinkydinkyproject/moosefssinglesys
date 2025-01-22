@@ -1,4 +1,4 @@
-WORK IN PROGRESS NOT COMPLETE
+WORK IN PROGRESS NOT COMPLETE (not code just documentation and a howto with references to source material)
 # moosefssinglesys
 This is a howto & explainer (as well as notes of my build I'm making public for others to reference for their own setups) on how to build moosefs for a single system setup 
 (not recommended for any kind of corporate/production setup, but viable for homelabs) The goal here is to setup a single system as a "clustered" setup for the 
@@ -16,7 +16,9 @@ more details here tho regarding forensics and data recovery if you want to deep 
 The MAIN difference here is that with Moosefs one can't simply pull a drive and access all the data on another machine unless the metadata is accessible
 Union FS setups one can easily do that. So this is an important distinction one has to take note of. 
 
-For those using existing data, prepare a mountpoint
+For those using existing data on drives (usually not recommended to do), prepare a seperate folder in each drive/chunkserver
+mfs or moosefs or whatever you choose, that will be where your data goes. Alternately one can also can migrate the data
+off the first chunkserver intended drive, then configure it as a chunkserver and move the data back to the mfs
 
 
 I setup on Arch via AUR so it was just a matter of installing only moosefs which includes everything needed, 
@@ -58,36 +60,112 @@ And now you can install the Master with CGI using the following command:
 
 Now that the install is done
 
-Some prep work to set up the system
+Some prep work to set up the configs for configging
 Drive count (if you have a large number of drives this step is optional)
 
  `lsblk | grep disk | wc -l`
 
-(this will tell you how many physical drives you have. so subtract 1 from tha total since the boot drive won't be a chunkserver)
+(this will tell you how many physical drives you have. so subtract 1 from tha total since the boot/root drive won't be a chunkserver)
 
 Setting up chunkserver configs
 
 1. Prepare another mfschunkserver.cfg file for the new chunkserver in a different path, let’s call it /etc/mfs/chunkserver2.cfg
- 1a. Since I have 67 physical drives connected to a single machine I had to make multiple configs so I ran this to create the multiple copies of the sample file to save time on copying each one individually.
-Adjust accordingly. If you have 10 drives then the number where mine is 67 in the line below would be 10 for you. 
+ 1a. Since I have 61 physical drives connected to a single machine I had to make multiple configs so I ran this to create the multiple copies of the sample file to save time on copying each one individually.
+Adjust accordingly. If you have 10 drives then the number where mine is 61 in the line below would be 10 for you. 
 
-` for i in chunkserver{1..67} ; do cp mfschunkserver.cfg.sample "$i".cfg ; done`
+`cd /etc/mfs`
+` for i in chunkserver{1..61} ; do cp mfschunkserver.cfg.sample "$i".cfg ; done`
 
 2. Prepare another mfshdd.cfg file for the new chunkserver in a different path, let’s call it /etc/mfs/mfshdd2.cfg
- 2a. Same thing as above but with the filename being different 
+ 2a. Same thing as above but with this cfg file
+`cd /etc/mfs`
+` for i in mfshdd{1..61} ; do cp mfshdd.cfg.sample "$i".cfg ; done`
 
-` for i in mfshdd{1..67} ; do cp mfshdd.cfg.sample "$i".cfg ; done`
-
-3. Set HDD_CONF_FILENAME in chunkserver.cfg files to the path of newly prepared mfshdd.cfg file, in this example /etc/mfs/mfshdd.cfg and so forth. For obvious
+3. Set HDD_CONF_FILENAME in chunkserver.cfg files to the path of newly prepared mfshdd.cfg file, in this example /etc/mfs/mfshdd.cfg, /etc/mfshdd1.cfg and so forth. For obvious
    reasons a best practice would be to use each chunkserver.cfg with the corresponding numbered mfshdd.cfg
+   `HDD_CONF_FILENAME = /etc/mfs/mfshdd1.cfg` would go in the chunkserver1.cfg and so forth.  
 5. Set CSSERV_LISTEN_PORT to non-default, unused port (like 9522) in /etc/mfs/chunkserver2.cfg (already set to that port by default needs to be uncommented) 
 6. Run the second chunkserver with mfschunkserver -c /etc/chunkserver2.cfg
 7. Repeat if you need even more chunkservers on the same machine (the goal here)
+8. In the chunkserver.cfg (and numbered) files (or mfschunkserver.cfg if you opted to use the default naming) at the end of the file add the mount point
+for each drive mount you're using. (also noted below in the next section)
+
+Minimal setup using steps above to get started 
+
+Just three steps to have MooseFS up and running:
+1. Install at least one Master Server
+
+    Prepare default config (as root):
+
+`cd /etc/mfs
+cp mfsmaster.cfg.sample mfsmaster.cfg
+cp mfsexports.cfg.sample mfsexports.cfg`
+
+The mfsexports.cfg is set to allow any client in the network
+to access the server, this may need to be adjusted based on 
+your own security profile in your home network. If you plan 
+on staying in a single machine setup then change the * to 
+127.0.0.1 or localhost, but honestly default as is can work.
+
+  Prepare the metadata file (as root):
+
+`cd /var/lib/mfs
+cp metadata.mfs.empty metadata.mfs
+chown mfs:mfs metadata.mfs
+rm metadata.mfs.empty`
+
+Run Master Server (as root): mfsmaster start
+Make this machine visible under mfsmaster name, e.g. by adding a DNS entry (recommended) or by adding it in /etc/hosts on all servers that run any of MooseFS components.
+
+2. Install at least two Chunkservers
+
+    Prepare default config (as root):
+
+`cd /etc/mfs
+cp mfschunkserver.cfg.sample mfschunkserver.cfg
+cp mfshdd.cfg.sample mfshdd.cfg`
+
+At the end of mfshdd.cfg file make one or more entries containing paths to HDDs / partitions designated for storing chunks, e.g.:
+
+`/mnt/chunkserver1 (in my case I used my drive's UUIDs as the mount which for me works but you may have a different way of going about it)
+/mnt/chunkserver2
+/mnt/chunkserver3`
+
+It is recommended to use XFS as an underlying filesystem for disks designated to store chunks. More than two Chunkservers are strongly recommended.
+In my case I have existing data on the drives and am using BTRFS, this for me adds a little extra resiliency and recovery at the FS level, since
+I have had this setup for some years now, I'm doing manual data migration into MooseFS by migrating the data from the various drives lower FS (BTRFS) into
+stacked MooseFS setup
+
+Change the ownership and permissions to mfs:mfs to above mentioned locations (if you have multiple chunkservers as denoted above this is the command
+with wildcard to get them all in one command):
+
+`chown mfs:mfs /mnt/chunks*
+chmod 770 /mnt/chunks*`
+
+Start the Chunkserver: 
+`mfschunkserver start`
+
+Repeat steps above for second (third, ...) Chunkserver.
+3. Client side: mount MooseFS filesystem
+
+Mount MooseFS (as root):
+
+`mkdir /mnt/mfs
+mount -t moosefs mfsmaster: /mnt/mfs`
+
+or: `mfsmount -H mfsmaster /mnt/mfs` if the above method is not supported by your system
+
+You can also add an /etc/fstab entry to mount MooseFS during the system boot:
+
+`mfsmaster:    /mnt/mfs    moosefs    defaults,mfsdelayedinit    0 0`
+
+Once that's done if you did the fstab approach type 
+`mount -a`
+and if no errors, you're ready to roll. 
 
 
-
-
-
-
-Single server Instructions adapted from MooseFS fork LizardFS with additional information for more complete instructions for anyone coming in new (like I did)
+-Deep dive into forensics of stacked file systems like MooseFS https://www.sciencedirect.com/science/article/pii/S266628172300197X
+-Single server Instructions adapted from MooseFS fork LizardFS with additional information for more complete instructions for anyone coming in new (like I did)
 https://lizardfs.com/tabs/running-multiple-chunkservers-on-the-same-machine
+-full Setup instructions reference adapted for this document
+https://github.com/moosefs/moosefs/tree/master
