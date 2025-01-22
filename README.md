@@ -84,10 +84,11 @@ Adjust accordingly. If you have 10 drives then the number where mine is 61 in th
 3. Set HDD_CONF_FILENAME in chunkserver.cfg files to the path of newly prepared mfshdd.cfg file, in this example /etc/mfs/mfshdd.cfg, /etc/mfshdd1.cfg and so forth. For obvious
    reasons a best practice would be to use each chunkserver.cfg with the corresponding numbered mfshdd.cfg
    `HDD_CONF_FILENAME = /etc/mfs/mfshdd1.cfg` would go in the chunkserver1.cfg and so forth.  
-5. Set CSSERV_LISTEN_PORT to non-default, unused port (like 9522) in /etc/mfs/chunkserver2.cfg (already set to that port by default needs to be uncommented) 
-6. Run the second chunkserver with mfschunkserver -c /etc/chunkserver2.cfg
-7. Repeat if you need even more chunkservers on the same machine (the goal here)
-8. In the chunkserver.cfg (and numbered) files (or mfschunkserver.cfg if you opted to use the default naming) at the end of the file add the mount point
+4. Set `CSSERV_LISTEN_PORT` to non-default, unused port (like 9522) in /etc/mfs/chunkserver2.cfg (already set to that port by default needs to be uncommented) recommended to set each
+   subsequent file with an incremental port, 9523, 9524, etc
+5. Run the second chunkserver with mfschunkserver -c /etc/chunkserver2.cfg
+6. Repeat if you need even more chunkservers on the same machine (the goal here)
+7. In the chunkserver.cfg (and numbered) files (or mfschunkserver.cfg if you opted to use the default naming) at the end of the file add the mount point
 for each drive mount you're using. (also noted below in the next section)
 
 Minimal setup using steps above to get started 
