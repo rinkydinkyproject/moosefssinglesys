@@ -162,8 +162,120 @@ You can also add an /etc/fstab entry to mount MooseFS during the system boot:
 
 Once that's done if you did the fstab approach type 
 `mount -a`
-and if no errors, you're ready to roll. 
 
+
+Additional notes:
+creating a systemd unit for each of the server portions and the chunkservers especially, 
+Each chunkserver aka mount for single server will require it's own unit. 
+`cd /etc/systemd/system`
+
+
+ mfscgiserv.service
+
+```
+ [Unit]
+ Description=MooseFS CGI server
+ After=syslog.target network.target ypbind.service mfsmaster.service
+
+ [Service]
+ Type=forking
+ TimeoutSec=600
+ ExecStart=/usr/sbin/mfscgiserv start
+ ExecStop=/usr/sbin/mfscgiserv stop
+
+ [Install]
+ WantedBy=multi-user.target
+```
+
+mfschunkserver.service
+
+```
+
+[Unit]
+Description=MooseFS chunkserver
+After=syslog.target network.target ypbind.service
+
+[Service]
+Type=forking
+TimeoutSec=600
+ExecStart=/usr/sbin/mfschunkserver -c /etc/mfs/chunkserver.cfg start
+ExecStop=/usr/sbin/mfschunkserver -c /etc/mfs/chunkserver.cfg stop
+
+[Install]
+WantedBy=multi-user.target
+```
+Increment for each config/chunkserver you have locally
+
+mfschunkserver1.service
+
+```
+[Unit]
+Description=MooseFS chunkserver
+After=syslog.target network.target ypbind.service
+
+[Service]
+Type=forking
+TimeoutSec=600
+ExecStart=/usr/sbin/mfschunkserver -c /etc/mfs/chunkserver1.cfg start
+ExecStop=/usr/sbin/mfschunkserver -c /etc/mfs/chunkserver1.cfg stop
+
+[Install]
+WantedBy=multi-user.target
+```
+
+mfsmaster.service
+
+```
+[Unit]
+Description=MooseFS master node
+After=syslog.target network.target ypbind.service
+
+[Service]
+Type=forking
+TimeoutSec=600
+ExecStart=/usr/sbin/mfsmaster start
+ExecStop=/usr/sbin/mfsmaster stop
+
+[Install]
+WantedBy=multi-user.target
+```
+
+mfsmetalogger.service
+```
+
+[Unit]
+Description=MooseFS metalogger
+After=syslog.target network.target ypbind.service
+
+[Service]
+Type=forking
+TimeoutSec=600
+ExecStart=/usr/sbin/mfsmetalogger start
+ExecStop=/usr/sbin/mfsmetalogger stop
+
+[Install]
+WantedBy=multi-user.target
+```
+
+mfsmount.service
+```
+
+[Unit]
+Description=MooseFS mounts
+After=syslog.target network.target ypbind.service mfsmaster.service
+
+[Service]
+Type=forking
+TimeoutSec=600
+ExecStart=/usr/bin/mfsmount /fileserver2 -H 192.168.0.240
+ExecStop=/usr/bin/umount /fileserver2
+
+[Install]
+WantedBy=multi-user.target
+```
+After setting those unit files, run to enable (copy paste as one command)
+`systemctl enable mfscgiserv && systemctl enable chunkserve* && systemctl enable mfsmaster && systemctl enable mfsmetalogger`
+Then start the services. 
 
 -Deep dive into forensics of stacked file systems like MooseFS https://www.sciencedirect.com/science/article/pii/S266628172300197X
 -Single server Instructions adapted from MooseFS fork LizardFS with additional information for more complete instructions for anyone coming in new (like I did)
