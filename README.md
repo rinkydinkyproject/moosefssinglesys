@@ -1,4 +1,5 @@
 WORK IN PROGRESS NOT COMPLETE (not code just documentation and a howto with references to source material and adapted complete instructions from various sources) 
+BUT for someone technical enough (and likely are if reading this document), it's enough of a starting point. Everything needed to get started is here. I'll be refining it over time. 
 # moosefssinglesys
 The goal here is a COMPLETE howto & explainer (as well as notes of my build I'm making public for others to reference for their own setups) on how to build moosefs for a single system setup 
 (not recommended or officially supported for any kind of corporate/production setup, but extremely viable for homelabs) The goal here is to setup a single system as a "clustered" setup for the 
